@@ -27,6 +27,18 @@
     .mini { aspect-ratio: 1; border-radius: 2px; }
     .toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .warning { color: #a03a2e; font-weight: 800; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .middle { display: grid; gap: 16px; align-content: start; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; background: #b9a88f; color: #fff; font-weight: 800; }
+    .badge.ok { background: #356b3f; }
+    .badge.draft { background: #b07a2a; }
+    .chip { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+    .card-queue { display: grid; gap: 4px; max-height: 320px; overflow: auto; margin-top: 8px; }
+    .qrow { display: flex; gap: 8px; align-items: baseline; border-bottom: 1px dashed #e1d5c5; padding: 4px 0; }
+    .qrow b { white-space: nowrap; }
+    .qsegs { display: flex; flex-wrap: wrap; gap: 4px; }
+    .qseg { border: 1px solid #d9cdbc; border-radius: 6px; padding: 2px 6px; font-size: 13px; background: #fff; }
+    .qseg.flagged { border: 2px dashed #a03a2e; background: #fbe9e4; }
     @media (max-width: 1000px) { header { display: block; } .app { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -50,7 +62,20 @@
         <button data-block="diamond" class="secondary">小菱形</button>
       </div>
     </aside>
-    <section class="panel"><div class="grid" id="grid"></div></section>
+    <div class="middle">
+      <section class="panel"><div class="grid" id="grid"></div></section>
+      <section class="panel" id="weaveCard">
+        <h2>上机织造卡</h2>
+        <div class="toolbar"><button id="genCardBtn">生成/重算卡片</button><button id="confirmCardBtn" class="secondary">确认卡片</button></div>
+        <p id="cardStatus"></p>
+        <div id="cardReasons"></div>
+        <div id="cardFlags"></div>
+        <div class="card-queue" id="cardQueue"></div>
+        <h2>作废留档</h2>
+        <div class="toolbar"><button id="clearHistoryBtn" class="secondary">清空留档</button></div>
+        <div id="cardHistory"></div>
+      </section>
+    </div>
     <aside class="panel">
       <h2>操作</h2>
       <div class="toolbar"><button id="undoBtn" class="secondary">撤销</button><button id="redoBtn" class="secondary">重做</button></div>
@@ -73,6 +98,14 @@
     let cols = 18, rows = 14, active = 1, block = "dot", dragging = false;
     let cells = [];
     let undo = [], redo = [];
+    // 暴露给织造卡模块：读取画布状态、订阅画布变更
+    const patternDesk = window.patternDesk = {
+      colors,
+      listeners: [],
+      getState() { return { cols, rows, cells: [...cells] }; },
+      onChange(fn) { this.listeners.push(fn); },
+      emit() { this.listeners.forEach(fn => fn(this.getState())); }
+    };
     function init(loadSaved = true) {
       const saved = loadSaved && JSON.parse(localStorage.getItem("zfl31Pattern") || "null");
       if (saved) { cols = saved.cols; rows = saved.rows; cells = saved.cells; }
@@ -91,6 +124,7 @@
       });
       window.onpointerup = () => dragging = false;
       renderStats();
+      patternDesk.emit();
     }
     function snapshot() { undo.push([...cells]); redo = []; if (undo.length > 50) undo.shift(); }
     function paint(i) {
@@ -130,5 +164,8 @@
     };
     init();
   </script>
+  <script src="card.js"></script>
+  <script src="cardStore.js"></script>
+  <script src="cardPanel.js"></script>
 </body>
 </html>
